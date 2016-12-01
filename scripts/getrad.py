@@ -4,6 +4,58 @@ from windspharm.standard import VectorWind
 from windspharm.tools import prep_data, recover_data, order_latdim
 from scipy import interpolate
 
+def polerot(plat,plon,ilat,ilon,n):
+    rad=6371032 #in m
+    dtr = pi/180.
+    rtd = 180./pi
+    plat = (plat-90.)*dtr
+    plon = plon*dtr
+    ilon = ilon*dtr
+    ilat = ilat*dtr
+
+    do i in range(0,n) :
+
+        # convert to cartesian coordinates
+        # from bronstein p.217
+
+        x=rad*np.cos(ilat(i))*np.cos(ilon(i))
+        y=rad*np.cos(ilat(i))*np.sin(ilon(i))
+        z=rad*np.sin(ilat(i))
+
+
+        # turn XY
+        xn=x*np.cos(plon)+y*np.sin(plon)
+        yn=x*(-np.sin(plon))+y*np.cos(plon)
+        zn=z
+
+
+        # tilt XZ
+        xnn=xn*cos(plat)+zn*sin(plat)
+        ynn=yn
+        znn=xn*(-np.sin(plat))+zn*np.cos(plat)
+
+        # convert back to polar coordinates
+        rr=np.sqrt(xnn*xnn+ynn*ynn+znn*znn)
+        nlat(i)=np.arcsin(znn/rr)*rtd
+
+
+        if xnn==0. :
+            if ynn > 0. :
+                nlon(i)=0.
+        	else
+        	    nlon(i)=180.
+
+        elif ynn==0. :
+            nlon(i)=90.
+        else
+            nlon(i)=np.arctan(ynn,xnn)*rtd
+
+
+    return nlat,nlon
+
+
+
+
 dset = "erain"
 scheme = "UOM"
 
@@ -54,6 +106,7 @@ for yr in range(2005,2006):
     lon  = np.zeros((max_ntrk,max_trklength))
     lat  = np.zeros_like(lon)
     cslp = np.zeros_like(lon)
+    np = nnp.zeros(max_ntrk)  # number of points in a track
 
     f = open(ftrk, 'r')
 
@@ -84,6 +137,7 @@ for yr in range(2005,2006):
 
         #print 'ntrk=',ntrk, 'nit=',nit
 
+            np[ntrk-1]=nit
         for n in range(0,nit):
             l = f.readline()
             columns = l.split()
@@ -94,6 +148,15 @@ for yr in range(2005,2006):
 
     f.close()
     print 'ftrk closed'
+
+    #get radius
+
+
+
+    #pole rotation
+    for itrk in range(0,ntrk):
+        for ip in range(0,np(ntrk-1)):
+
 
 
     quit()
