@@ -201,5 +201,4 @@ for yr in range(2005,2006):
          nlat, nlon = polerot(xnplat, xnplon,gridlat,gridlon)
          print 'nlat = ', nlat
          print 'nlon = ', nlon+90+plon
-         print plon
 # quit()
