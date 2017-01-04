@@ -8,14 +8,25 @@ print np.pi
 
 
 def polerot(plat,plon,ilat,ilon):
+# the location of the new pole is (plat,plon)
+# the new coordinates are in a Cartesian c. system where:
+# real North pole is (y=90,x=0) in the new system if plat > 0 and the East is (y=0,x=90)
+# real South pole is (90,0) in the new system if plat < 0 and the East is (y=0,x=-90)
+
+
     import numpy as np
     rad  =6371032 #in m
     pi   = np.pi
     dtr  = pi/180.
     rtd  = 180./pi
+
+    plat0 = plat*1
+    plon0 = plon*1.
+
     plat = (plat-90.)*dtr
     plon = plon*dtr
 
+    print 'ilon=',ilon
     ilon[:] = [x*dtr for x in ilon]
     ilat[:] = [x*dtr for x in ilat]
 
@@ -52,17 +63,26 @@ def polerot(plat,plon,ilat,ilon):
 
 
         if xnn==0.:
+            print 'xnn = 0'
             if ynn > 0.:
               nlon[index]=0.
-        	# else :
-        	#   nlon[index]=180.
+            else:
+        	  nlon[index]=180.
 
-        elif ynn==0.:
-            nlon[index]=90.
-        else:
-            nlon[index]=np.arctan(ynn/xnn)*rtd
+        # elif ynn==0.:
+        #     print 'ynn == 0'
+        #     print plon, x,y,yn
+        #     print x*(-np.sin(plon)),y*np.cos(plon)
+        #     nlon[index]=90.
+        # else:
+        nlon[index]=np.arctan2(xnn,ynn)*rtd
 
         print nlat,nlon
+
+    # if plat0>0 :
+    #      nlon = -nlon
+    # else :
+    #      nlat = -nlat
 
 
     return nlat,nlon
@@ -175,12 +195,24 @@ for yr in range(2005,2006):
     for itrk in range(0,1): #  ntrk):
         for ip in range(0,1): #np[itrk]):
 
-         print lon[itrk,ip]
-         print lat[itrk,ip]
-         tmplat = [90,45]
-         tmplon = [0,120]
+        #  print 'lon = ', lon[itrk,ip]
+        #  print 'lat = ', lat[itrk,ip]
+         lon[itrk,ip] = 165
+         lat[itrk,ip] = -11
+         tmplat = [ -90, -7, -11, 0]
+         tmplon = [ 165, 175, 175, 165]
+         tmplat1 = tmplat*1
+         tmplon1 = tmplon*1
          nlat, nlon = polerot(lat[itrk,ip],lon[itrk,ip],tmplat,tmplon)
-         print nlat
-         print nlon
-
+         print 'lat = ', tmplat1
+         print 'lon = ', tmplon1
+         print 'nlat = ', nlat
+         print 'nlon = ', nlon
+         print nlat[0],nlon[0],nlat[1],nlon[1]
+         print "place pole to (lat %d,lon %d)"%(nlat[0],nlon[0])
+         nlat1, nlon1 = polerot(nlat[0],    nlon[0],nlat,nlon)
+         print 'nlat = ', nlat1
+        #  print 'nlon = ', nlon1
+        #  print 'nlon = ', nlon1+lon[itrk,ip] +90 # works for NH
+         print 'nlon = ', nlon1+90+lon[itrk,ip]
 # quit()
