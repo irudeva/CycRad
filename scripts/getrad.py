@@ -34,9 +34,6 @@ def polerot(plat,plon,ilat,ilon):
 
     for index, (lon,lat) in enumerate(zip(ilon, ilat)):
 
-        # print "lat, lon = ",lat*rtd,lon*rtd
-        # print "plat, plon = ",plat*rtd,plon*rtd
-
         # convert to cartesian coordinates
         # from bronstein p.217
 
@@ -183,25 +180,26 @@ for yr in range(2005,2006):
 
         #  print 'lon = ', lon[itrk,ip]
         #  print 'lat = ', lat[itrk,ip]
-         plon = lon[itrk,ip]
-         plat = lat[itrk,ip]
-         plon = 165
-         plat = -11
-         nplon = plon*1.
-         nplat = 90
-         tmplat = [ nplat, -90, -89.9, -89.9999]
-         tmplon = [ nplon,165, 165, -15]
-         tmplat1 = tmplat*1
-         tmplon1 = tmplon*1
-         nlat, nlon = polerot(plat,plon,tmplat,tmplon)
-         print 'lat = ', tmplat1
-         print 'lon = ', tmplon1
+        #  plon = [lon[itrk,ip]]
+        #  plat = [lat[itrk,ip]]
+         plon = [165]
+         plat = [-11]
+         nplat0 = plat[0]
+         nplon0 = plon[0]
+         print "place pole to cyc center (lat %2.f,lon %d)"%(plat[0], plon[0])
+         nplat, nplon = polerot(plat[0],plon[0],[90],[nplon0])
+        #  print 'lat = ', tmplat1
+        #  print 'lon = ', tmplon1
+        #  print 'nlat = ', nlat
+        #  print 'nlon = ', nlon
+         xnplat = nplat[0]
+         xnplon = nplon[0]
+         gridlat = [80,  70]
+         gridlon = [ 90, -90]
+         print "place pole back to NP"
+        #  print "place pole to (lat %2.f,lon %d)"%(xnplat, xnplon)
+         nlat, nlon = polerot(xnplat, xnplon,gridlat,gridlon)
          print 'nlat = ', nlat
-         print 'nlon = ', nlon
-         xnplat = nlat[0]
-         xnplon = nlon[0]
-         print "place pole to (lat %2.f,lon %d)"%(xnplat, xnplon)
-         nlat1, nlon1 = polerot(xnplat, xnplon,nlat,nlon)
-         print 'nlat = ', nlat1
-         print 'nlon = ', nlon1+90+plon
+         print 'nlon = ', nlon+90+plon
+         print plon
 # quit()
