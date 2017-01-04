@@ -4,23 +4,35 @@ from windspharm.standard import VectorWind
 from windspharm.tools import prep_data, recover_data, order_latdim
 from scipy import interpolate
 
-def polerot(plat,plon,ilat,ilon,n):
-    rad=6371032 #in m
-    dtr = pi/180.
-    rtd = 180./pi
+print np.pi
+
+
+def polerot(plat,plon,ilat,ilon):
+    import numpy as np
+    rad  =6371032 #in m
+    pi   = np.pi
+    dtr  = pi/180.
+    rtd  = 180./pi
     plat = (plat-90.)*dtr
     plon = plon*dtr
-    ilon = ilon*dtr
-    ilat = ilat*dtr
 
-    do i in range(0,n) :
+    ilon[:] = [x*dtr for x in ilon]
+    ilat[:] = [x*dtr for x in ilat]
+
+    nlat = np.zeros_like(ilat)
+    nlon = np.zeros_like(ilon)
+
+    for index, (lon,lat) in enumerate(zip(ilon, ilat)):
+
+        print lon*rtd,lat*rtd
+        print 'ind=',index
 
         # convert to cartesian coordinates
         # from bronstein p.217
 
-        x=rad*np.cos(ilat(i))*np.cos(ilon(i))
-        y=rad*np.cos(ilat(i))*np.sin(ilon(i))
-        z=rad*np.sin(ilat(i))
+        x=rad*np.cos(lat)*np.cos(lon)
+        y=rad*np.cos(lat)*np.sin(lon)
+        z=rad*np.sin(lat)
 
 
         # turn XY
@@ -30,25 +42,27 @@ def polerot(plat,plon,ilat,ilon,n):
 
 
         # tilt XZ
-        xnn=xn*cos(plat)+zn*sin(plat)
+        xnn=xn*np.cos(plat)+zn*np.sin(plat)
         ynn=yn
         znn=xn*(-np.sin(plat))+zn*np.cos(plat)
 
         # convert back to polar coordinates
         rr=np.sqrt(xnn*xnn+ynn*ynn+znn*znn)
-        nlat(i)=np.arcsin(znn/rr)*rtd
+        nlat[index]=np.arcsin(znn/rr)*rtd
 
 
-        if xnn==0. :
-            if ynn > 0. :
-                nlon(i)=0.
-        	else
-        	    nlon(i)=180.
+        if xnn==0.:
+            if ynn > 0.:
+              nlon[index]=0.
+        	# else :
+        	#   nlon[index]=180.
 
-        elif ynn==0. :
-            nlon(i)=90.
-        else
-            nlon(i)=np.arctan(ynn,xnn)*rtd
+        elif ynn==0.:
+            nlon[index]=90.
+        else:
+            nlon[index]=np.arctan(ynn/xnn)*rtd
+
+        print nlat,nlon
 
 
     return nlat,nlon
@@ -61,7 +75,7 @@ scheme = "UOM"
 
 for yr in range(2005,2006):
 
-    fnc  = "/Users/irudeva/work/DATA/%st/erain.mslp.%d.nc"%(dset,yr)
+    fnc  = "/Users/Irina/work/DATA/%st/erain.mslp.%d.nc"%(dset,yr)
     ftrk = "../data/trk%s/trk_%s/ntrkdat.%s.%d"%(scheme,dset,dset,yr)
     frad = "../output/rad%s.%s.%d.trk"%(scheme,dset,yr)
     print "fnc  =",fnc
@@ -69,31 +83,31 @@ for yr in range(2005,2006):
     print "frad =",frad
 
     # read netcdf
-    print 'fnc reading:'
-    dimnam=('longitude','latitude','time')
-    varnam=['longitude','latitude','time','msl']
-
-    nc = Dataset(fnc, 'r')
-    v=0
-    for var in varnam:
-        if nc.variables[varnam[v]].name != var:
-            print "Variables don't agree", var, nc.variables[varnam[v]].name, v
-            exit()
-        v += 1
-
-    lons = nc.variables[varnam[0]][:]
-    lats = nc.variables[varnam[1]][:]
-    time = nc.variables[varnam[2]][:]
-    mslp = nc.variables[varnam[3]][:]/100.
-    mslp0=mslp/100.
+    # print 'fnc reading:'
+    # dimnam=('longitude','latitude','time')
+    # varnam=['longitude','latitude','time','msl']
+    #
+    # nc = Dataset(fnc, 'r')
+    # v=0
+    # for var in varnam:
+    #     if nc.variables[varnam[v]].name != var:
+    #         print "Variables don't agree", var, nc.variables[varnam[v]].name, v
+    #         exit()
+    #     v += 1
+    #
+    # lons = nc.variables[varnam[0]][:]
+    # lats = nc.variables[varnam[1]][:]
+    # time = nc.variables[varnam[2]][:]
+    # mslp = nc.variables[varnam[3]][:]/100.
+    # mslp0=mslp/100.
 
 
     print "\nSLP Interpolation"
     # data from south to north
 
     #for t in range(time.size) :
-    slpint = interpolate.interp2d(lons, lats, mslp[0,:,:], kind='cubic')
-    print slpint(0,30)
+    # slpint = interpolate.interp2d(lons, lats, mslp[0,:,:], kind='cubic')
+    # print slpint(0,30)
 
     print "end interpolation"
 
@@ -106,12 +120,11 @@ for yr in range(2005,2006):
     lon  = np.zeros((max_ntrk,max_trklength))
     lat  = np.zeros_like(lon)
     cslp = np.zeros_like(lon)
-    np = nnp.zeros(max_ntrk)  # number of points in a track
+    np = np.zeros(max_ntrk, dtype=np.int)  # number of points in a track
 
     f = open(ftrk, 'r')
 
     for line in range(1,max_ntrk):
-        break
         emptyline = f.readline()
         header    = f.readline()
         emptyline = f.readline()
@@ -124,6 +137,7 @@ for yr in range(2005,2006):
 
         columns = header.split()
         tmp=columns[1]
+        print header
         if(tmp[-1] == "(") :
             ntrk = int(tmp[:-1])
             nit=int(columns[14])
@@ -137,7 +151,7 @@ for yr in range(2005,2006):
 
         #print 'ntrk=',ntrk, 'nit=',nit
 
-            np[ntrk-1]=nit
+        np[ntrk-1]=nit
         for n in range(0,nit):
             l = f.readline()
             columns = l.split()
@@ -146,6 +160,9 @@ for yr in range(2005,2006):
             cslp[ntrk-1,n]=float(columns[9])
             #print lon[ntrk-1,n],lat[ntrk-1,n],cslp[ntrk-1,n]
 
+        break  # for testing - first tack only
+
+
     f.close()
     print 'ftrk closed'
 
@@ -153,10 +170,17 @@ for yr in range(2005,2006):
 
 
 
+
     #pole rotation
-    for itrk in range(0,ntrk):
-        for ip in range(0,np(ntrk-1)):
+    for itrk in range(0,1): #  ntrk):
+        for ip in range(0,1): #np[itrk]):
 
+         print lon[itrk,ip]
+         print lat[itrk,ip]
+         tmplat = [90,45]
+         tmplon = [0,120]
+         nlat, nlon = polerot(lat[itrk,ip],lon[itrk,ip],tmplat,tmplon)
+         print nlat
+         print nlon
 
-
-    quit()
+# quit()
