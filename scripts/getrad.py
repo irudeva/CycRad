@@ -68,7 +68,7 @@ def polerot(plat,plon,ilat,ilon):
 
         # print "res----", nlat[index],nlon[index]
 
-        return nlat,nlon
+    return nlat,nlon
 
 
 
@@ -88,7 +88,7 @@ for yr in range(2005,2006):
     # for iyr,cyr in enumerate(np.arange(yr,yr+1)):
     for iy,cyr in enumerate(np.arange(yr,yr+1)):
      print "loop", iy, cyr
-     fnc  = "/Users/irudeva/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
+     fnc  = "/Users/Irina/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
      print "fnc  =",fnc
 
     # read netcdf
@@ -109,7 +109,7 @@ for yr in range(2005,2006):
      time = nc.variables[varnam[2]][:]
      mslp = nc.variables[varnam[3]][:]/100.
      #mslp0=mslp/100.
-     if iy ==0:
+     if iy == 0:
          slp=np.tile(mslp,(3,1,1,1))
      slp[iy,:,:,:] = mslp
 
@@ -133,6 +133,7 @@ for yr in range(2005,2006):
     print 'ftrk reading:'
     max_ntrk = 20000
     max_trklength = 200
+    npnt  = np.zeros(max_ntrk,dtype = np.int)
     lon  = np.zeros((max_ntrk,max_trklength))
     lat  = np.zeros_like(lon)
     cslp = np.zeros_like(lon)
@@ -172,8 +173,8 @@ for yr in range(2005,2006):
 
         #print 'ntrk=',ntrk, 'nit=',nit
 
-        np[ntrk-1]=nit
         import numpy as np
+        npnt[ntrk-1]=nit
         for n in range(0,nit):
             l = f.readline()
             columns = l.split()
@@ -185,11 +186,7 @@ for yr in range(2005,2006):
 
             iyr[ntrk-1,n] = -1
             for ind,year in enumerate(np.arange(yr-1,yr+1)):
-                print 'trk yr: ',str(date[ntrk-1,n])[0:4]
-                print 'year=',year
                 if str(year) == str(date[ntrk-1,n])[0:4]:
-                    print 'ok', ind, ntrk-1,n
-                    print iyr.shape
                     iyr[ntrk-1,n] = ind
             if iyr[ntrk-1,n] == -1:
                 print "!!!! Check years in trk file"
@@ -201,12 +198,12 @@ for yr in range(2005,2006):
                 hr   = int(str(trktime[ntrk-1,n]/100))
                 if t == datetime.datetime(year,mon,dat,hr):
                     it[ntrk-1,n] =ind
+                    break
             if it[ntrk-1,n] == -1:
                 print "!!!! Check time in trk file"
                 quit()
-            # print "current time", iyr, it
-
-            #print lon[ntrk-1,n],lat[ntrk-1,n],cslp[ntrk-1,n]
+            # print "current time", iyr[ntrk-1,n] , it[ntrk-1,n]
+            # print datetime.datetime(year,mon,dat,hr)
 
         break  # for testing - first tack only
 
@@ -221,17 +218,17 @@ for yr in range(2005,2006):
 
     #pole rotation
     for itrk in range(0,1): #  ntrk):
-        for ip in range(0,1): #np[itrk]):
+        for ip in range(npnt[itrk]):
 
+         print "start ip=",ip
          print date[itrk,ip]
-         print str(date[itrk,ip])[4:6]
 
         #  print 'lon = ', lon[itrk,ip]
         #  print 'lat = ', lat[itrk,ip]
-        #  plon = [lon[itrk,ip]]
-        #  plat = [lat[itrk,ip]]
-         plon = [165]
-         plat = [-11]
+         plon = [lon[itrk,ip]]
+         plat = [lat[itrk,ip]]
+        #  plon = [162]
+        #  plat = [33]
          nplat0 = plat[0]
          nplon0 = plon[0]
          print "place pole to cyc center (lat %2.f,lon %d)"%(plat[0], plon[0])
@@ -241,9 +238,10 @@ for yr in range(2005,2006):
         #  print 'nlat = ', nlat
         #  print 'nlon = ', nlon
 
-         import numpy as np
+        #  import numpy as np
          lonrange = np.arange(0., 360., 10.)
-         latrange = np.arange(90., 69.5, -0.5)
+         latrange = np.arange(90., 69., -0.5)
+         dslp     = np.zeros_like(latrange[1:-1])
 
          for ilon in lonrange :
              print "ilon=",ilon
@@ -254,13 +252,44 @@ for yr in range(2005,2006):
              gridlat = np.copy(latrange)
              gridlon = np.zeros_like(gridlat)+ilon
 
-             print 'gridlat=',gridlat
-             print 'gridlon=',gridlon
-
              print "place pole back to NP"
-             #  print "place pole to (lat %2.f,lon %d)"%(xnplat, xnplon)
              nlat, nlon = polerot(xnplat, xnplon,gridlat,gridlon)
+             nlon = nlon+90+plon
 
-             quit()
+            #  print 'nlat=',nlat
+            #  print 'nlon=',nlon
+
+             slpint = interpolate.interp2d(lons, lats, slp[iyr[itrk,ip],it[itrk,ip],:,:], kind='cubic')
+
+             for i,ilat in enumerate(latrange[1:]) :
+                 print i,nlat[0],nlon[0]
+                 print slpint(nlon[i],nlat[i])
+                 print i+2,nlat[2],nlon[2]
+                 print slpint(nlon[i+2],nlat[i+2])
+                 print 'cslp=',cslp[itrk,ip]
+                #  print slpint(nlon[i+2],nlat[i+2]) - slpint(nlon[i],nlat[i])
+                 dslp[i] = slpint(nlon[i+2],nlat[i+2]) - slpint(nlon[i],nlat[i])
+                #  print  dslp[i]
+
+                #  print slpint(0,30)
+                #  print lats[60]
+                #  print slp[iyr[ntrk-1,n],it[ntrk-1,n],60,0]
+
+                #  print lats[57]
+                #  print lons[162]
+                #  print slp[iyr[itrk,ip],it[itrk,ip],57,162]
+                #  print slpint(162,33)
+                 #
+                 print iyr[itrk,ip],it[itrk,ip]
+                 break
+
+             break
+
+         print "end ip=",ip
+
+        break
+
+
+                #  quit()
 
 # quit()
