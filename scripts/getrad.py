@@ -88,7 +88,7 @@ for yr in range(2005,2006):
 
     # for iyr,cyr in enumerate(np.arange(yr,yr+1)):
     for iy,cyr in enumerate(np.arange(yr-1,yr+2)):
-     print "loop", iy, cyr
+    #  print "loop", iy, cyr
      fnc  = "/Users/Irina/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
      print "fnc  =",fnc
 
@@ -157,7 +157,13 @@ for yr in range(2005,2006):
         emptyline = f.readline()
         header    = f.readline()
         emptyline = f.readline()
-        emptyline = f.readline()
+        smthline = f.readline()
+
+        fout.write(emptyline)
+        fout.write(header)
+        fout.write(emptyline)
+        fout.write(smthline)
+
         if header == '':
          print ' ftrk is at the eof'
          break
@@ -183,6 +189,7 @@ for yr in range(2005,2006):
         npnt[ntrk-1]=nit
         for n in range(0,nit):
             l = f.readline()
+            fout.write(l)
             columns = l.split()
             lon[ntrk-1,n]=float(columns[7])
             lat[ntrk-1,n]=float(columns[8])
@@ -208,14 +215,88 @@ for yr in range(2005,2006):
             if it[ntrk-1,n] == -1:
                 print "!!!! Check time in trk file"
                 quit()
-            # print "current time", iyr[ntrk-1,n] , it[ntrk-1,n]
-            # print datetime.datetime(year,mon,dat,hr)
 
-        # break  # for testing - first tack only
+            # start radius estimation
+            plon = [lon[ntrk-1,n]]
+            plat = [lat[ntrk-1,n]]
+            #  plon = [162]
+            #  plat = [33]
+            nplat0 = plat[0]
+            nplon0 = plon[0]
+            # print "place pole to cyc center (lat %2.f,lon %d)"%(plat[0], plon[0])
+            nplat, nplon = polerot(plat[0],plon[0],[90],[nplon0])
+
+            dlon = 10
+            dlat = 0.5
+            lonrange = np.arange(0., 360., dlon)
+            latrange = np.arange(90., 69., -dlat)
+            dslp     = np.zeros_like(latrange[1:-1])
+            lslp     = np.zeros_like(lonrange)
+            flslp    = np.copy(lslp)
+
+            mr = 6  # min radius = mr*dlat (deg.lat)
+
+            for i,ilon in enumerate(lonrange) :
+                 print "t=",n,"/",nit,"   ilon=",ilon
+
+                 xnplat = nplat[0]
+                 xnplon = nplon[0]
+
+                 gridlat = np.copy(latrange)
+                 gridlon = np.zeros_like(gridlat)+ilon
+
+                #  print "place pole back to NP"
+                 nlat, nlon = polerot(xnplat, xnplon,gridlat,gridlon)
+                 nlon = nlon+90+plon
+
+                 slpint = interpolate.interp2d(lons, lats, slp[iyr[ntrk-1,n],it[ntrk-1,n],:,:], kind='cubic')
+
+                 for j,jlat in enumerate(latrange[:-2]) :
+                     dslp[j] = slpint(nlon[j+2],nlat[j+2]) - slpint(nlon[j],nlat[j])
+
+                 if all(dslp[0:mr-2]) < 0. :
+                     print "!!!! slp bug"
+                     print dslp
+                    #  ftime.sleep(20)
+                     quit()
+
+                 for j in range(mr-1,latrange.size-2):
+                     if dslp[j] < 0 or j == latrange.size-3:
+                         slp0 = slpint(nlon[0],nlat[0])
+                         lslp[i] = slpint(nlon[j+1],nlat[j+1])[0]
+                         fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5}{:7.3f}{:>5}{:4.1f}{:>5}{:7.3f}{:>5}{:7.3f}\n".format("angle=",ilon,"lon=",nlon[j+1],"lat=",nlat[j+1],"rad=",(j+1)*dlat,"cslp=",slp0[0],"fslp=",lslp[i]))
+                        #  ftime.sleep(10)
+                         break
+
+
+                 fslp = np.amin(lslp)
+                 print fslp
+                 print fslp-slp[0]
+
+                 #  !!! skip if fslp-slp0 < 1.
+
+                 for j in range(mr,latrange.size-1):
+                     slp2 = slpint(nlon[j+1],nlat[j+1])[0]
+                     slp1 = slpint(nlon[j-1],nlat[j-1])[0]
+                     if slp1 < fslp and slp2 > fslp :
+                         tlat = 90. - (j-1)*dlat - (fslp-slp1)/(slp2-slp1)*dlat
+                         print j, 90. - (j-1)*dlat, gridlat[j]
+                         flat, flon = polerot(xnplat, xnplon,tlat,ilon)
+                         flslp[i] = slpint(flon,flat)[0]
+                         fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5}{:7.3f}{:>5}{:4.1f}{:>5}{:7.3f}{:>5}{:7.3f}\n".format("angle=",ilon,"lon=",nlon[j+1],"lat=",nlat[j+1],"rad=",(j+1)*dlat,"cslp=",slp0[0],"fslp=",flslp[i]))
+
+
+
+            # end radius estimation
+
+
+        break  # for testing - first tack only
 
 
     f.close()
     print 'ftrk closed'
+
+    quit()
 
     #get radius
 
@@ -297,25 +378,20 @@ for yr in range(2005,2006):
                     #  ftime.sleep(20)
                      quit()
 
-                 print dslp
-
                  for i in range(5,latrange.size-2):
                      if dslp[i] < 0:
                          fout.write(" %d %d  %f %f\n"%(i,latrange[i+1],slpint(nlon[i+1],nlat[i+1]),slpint(nlon[0],nlat[0])))
                          fout.write(" %d %d\n"%(nlon[0],nlat[0]))
                          fout.write(" %d %d\n"%(nlon[i+1],nlat[i+1]))
-                        #  fout.write("rjad: %d %d %f"%(i,latrange[i+1],[slpint(nlon[j],nlat[j]) for j in range(latrange.size-2)]))
-                         print "rjad:",i,latrange[i+1],[slpint(nlon[j],nlat[j]) for j in range(latrange.size-2)]
-                         print "dslp:",[dslp[j] for j in range(i+1)]
-                         ftime.sleep(10)
+                        #  print "rjad:",i,latrange[i+1],[slpint(nlon[j],nlat[j]) for j in range(latrange.size-2)]
+                        #  print "dslp:",[dslp[j] for j in range(i+1)]
+                        #  ftime.sleep(10)
                          break
 
 
 
                 #  break  # loop over lonrange
             #  ftime.sleep(5)
-
-             print "end ip=",ip
 
         # break
         # ftime.sleep(5)
