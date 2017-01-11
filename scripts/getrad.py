@@ -89,7 +89,7 @@ for yr in range(2005,2006):
     # for iyr,cyr in enumerate(np.arange(yr,yr+1)):
     for iy,cyr in enumerate(np.arange(yr-1,yr+2)):
      print "loop", iy, cyr
-     fnc  = "/Users/irudeva/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
+     fnc  = "/Users/Irina/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
      print "fnc  =",fnc
 
     # read netcdf
@@ -139,7 +139,7 @@ for yr in range(2005,2006):
     #read trk
 
     print 'ftrk reading:'
-    max_ntrk =  10 #20000
+    max_ntrk =  2 #20000
     max_trklength = 200
     npnt  = np.zeros(max_ntrk,dtype = np.int)
     lon  = np.zeros((max_ntrk,max_trklength))
@@ -301,7 +301,13 @@ for yr in range(2005,2006):
 
                  for i in range(5,latrange.size-2):
                      if dslp[i] < 0:
-                         fout.write(" %d %d  %d %d\n"%(i,latrange[i],slpint(nlon[i+1],nlat[i+1]),slpint(nlat[0],nlon[0])))
+                         fout.write(" %d %d  %f %f\n"%(i,latrange[i+1],slpint(nlon[i+1],nlat[i+1]),slpint(nlon[0],nlat[0])))
+                         fout.write(" %d %d\n"%(nlon[0],nlat[0]))
+                         fout.write(" %d %d\n"%(nlon[i+1],nlat[i+1]))
+                        #  fout.write("rjad: %d %d %f"%(i,latrange[i+1],[slpint(nlon[j],nlat[j]) for j in range(latrange.size-2)]))
+                         print "rjad:",i,latrange[i+1],[slpint(nlon[j],nlat[j]) for j in range(latrange.size-2)]
+                         print "dslp:",[dslp[j] for j in range(i+1)]
+                         ftime.sleep(10)
                          break
 
 
