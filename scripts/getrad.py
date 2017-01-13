@@ -89,7 +89,7 @@ for yr in range(2005,2006):
     # for iyr,cyr in enumerate(np.arange(yr,yr+1)):
     for iy,cyr in enumerate(np.arange(yr-1,yr+2)):
     #  print "loop", iy, cyr
-     fnc  = "/Users/Irina/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
+     fnc  = "/Users/irudeva/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
      print "fnc  =",fnc
 
     # read netcdf
