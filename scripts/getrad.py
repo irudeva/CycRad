@@ -93,7 +93,7 @@ for yr in range(2005,2006):
      print "fnc  =",fnc
 
     # read netcdf
-     print 'fnc reading:'
+     print 'fnc reading...'
      dimnam=('longitude','latitude','time')
      varnam=['longitude','latitude','time','msl']
 
@@ -226,15 +226,17 @@ for yr in range(2005,2006):
             # print "place pole to cyc center (lat %2.f,lon %d)"%(plat[0], plon[0])
             nplat, nplon = polerot(plat[0],plon[0],[90],[nplon0])
 
+            # grid around cyclone center
             dlon = 10
             dlat = 0.5
             lonrange = np.arange(0., 360., dlon)
             latrange = np.arange(90., 69., -dlat)
-            dslp     = np.zeros_like(latrange[1:-1])
+
+            dslp     = np.zeros_like(latrange[:-1])
             lslp     = np.zeros_like(lonrange)
             flslp    = np.copy(lslp)
 
-            mr = 6  # min radius = mr*dlat (deg.lat)
+            mr = 4  # min radius = mr*dlat (deg.lat)
 
             for i,ilon in enumerate(lonrange) :
                  print "t=",n,"/",nit,"   ilon=",ilon
@@ -251,45 +253,61 @@ for yr in range(2005,2006):
 
                  slpint = interpolate.interp2d(lons, lats, slp[iyr[ntrk-1,n],it[ntrk-1,n],:,:], kind='cubic')
 
-                 for j,jlat in enumerate(latrange[:-2]) :
-                     dslp[j] = slpint(nlon[j+2],nlat[j+2]) - slpint(nlon[j],nlat[j])
+                 for j,jlat in enumerate(latrange[:-1]) :
+                     dslp[j] = slpint(nlon[j+1],nlat[j+1]) - slpint(nlon[j],nlat[j])
 
-                 if all(dslp[0:mr-2]) < 0. :
+                 if all(dslp[0:mr-1]) < 0. :
                      print "!!!! slp bug"
                      print dslp
                     #  ftime.sleep(20)
                      quit()
 
-                 for j in range(mr-1,latrange.size-2):
-                     if dslp[j] < 0 or j == latrange.size-3:
+                 for j in range(mr,latrange.size-1):
+                     if dslp[j] < 0 or j == latrange.size-2:
                          slp0 = slpint(nlon[0],nlat[0])
-                         lslp[i] = slpint(nlon[j+1],nlat[j+1])[0]
-                         fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5}{:7.3f}{:>5}{:4.1f}{:>5}{:7.3f}{:>5}{:7.3f}\n".format("angle=",ilon,"lon=",nlon[j+1],"lat=",nlat[j+1],"rad=",(j+1)*dlat,"cslp=",slp0[0],"fslp=",lslp[i]))
+                         lslp[i] = slpint(nlon[j],nlat[j])[0]
+                         fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:4.1f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",nlon[j+1],"lat=",nlat[j+1],"rad=",(j+1)*dlat,"cslp=",slp0[0],"fslp=",lslp[i]))
                         #  ftime.sleep(10)
                          break
 
 
-                 fslp = np.amin(lslp)
-                 print fslp
-                 print fslp-slp[0]
+            # find the last closed isobar (fslp)
+            print "np.amin=", np.amin(lslp)
+            print lslp
+            fslp = np.amin(lslp)
+            print fslp
+            print fslp-slp0[0]  # add this critarium
 
-                 #  !!! skip if fslp-slp0 < 1.
+         #  !!! skip if fslp-slp0 < 1.
 
-                 for j in range(mr,latrange.size-1):
-                     slp2 = slpint(nlon[j+1],nlat[j+1])[0]
-                     slp1 = slpint(nlon[j-1],nlat[j-1])[0]
-                     if slp1 < fslp and slp2 > fslp :
-                         tlat = 90. - (j-1)*dlat - (fslp-slp1)/(slp2-slp1)*dlat
-                         print j, 90. - (j-1)*dlat, gridlat[j]
-                         flat, flon = polerot(xnplat, xnplon,tlat,ilon)
-                         flslp[i] = slpint(flon,flat)[0]
-                         fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5}{:7.3f}{:>5}{:4.1f}{:>5}{:7.3f}{:>5}{:7.3f}\n".format("angle=",ilon,"lon=",nlon[j+1],"lat=",nlat[j+1],"rad=",(j+1)*dlat,"cslp=",slp0[0],"fslp=",flslp[i]))
+            # find where last closed isobar fslp cross each radius
+            gridlat = np.copy(latrange)
+            for ilon in lonrange:
+                for j in range(mr,latrange.size):
+                 slp2 = slpint(nlon[j],nlat[j])[0]
+                 slp1 = slpint(nlon[j-1],nlat[j-1])[0]
 
+                 print ilon,j, fslp, slp1, slp2
+                 if slp1 <= fslp and slp2 > fslp :
+                     tlat = 90. - (j-1)*dlat - (fslp-slp1)/(slp2-slp1)*dlat
+                     print ilon,j, 90. - (j-1)*dlat, gridlat[j-1]
+                     flat, flon = polerot(xnplat, xnplon,[tlat,90],[ilon,ilon])
+                    #  print "xnplat=",xnplat, "xnplon=",xnplon
+                     print "flat=",flat, "flon=",flon
+                     flslp[i] = slpint(flon[0],flat[0])[0]
+                     fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",flon[0],"lat=",flat[0],"rad=",90.-tlat,"cslp=",slp0[0],"fslp=",flslp[i]))
+                     break
+
+                 if j == latrange.size-1 and slpint(nlon[mr-1],nlat[mr-1])[0] > fslp :
+                     tlat = 90.-mr*dlat
+                     flat, flon = polerot(xnplat, xnplon,[tlat,90],[ilon,ilon])
+                     flslp[i] = slpint(flon[0],flat[0])[0]
+                     fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",flon[0],"lat=",flat[0],"rad=",90.-tlat,"cslp=",slp0[0],"fslp=",flslp[i]))
 
 
             # end radius estimation
 
-
+            break # for the first time step of a track
         break  # for testing - first tack only
 
 
