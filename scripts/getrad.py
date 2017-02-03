@@ -64,7 +64,7 @@ def polerot(plat,plon,ilat,ilon):
         nlat[index]=np.arcsin(znn/rr)*rtd
 
 
-        nlon[index]=np.arctan2(xnn,ynn)*rtd
+        nlon[index]=np.arctan2(ynn,xnn)*rtd
 
         # print "res----", nlat[index],nlon[index]
 
@@ -86,46 +86,71 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
     nlat = np.zeros_like(ilat)
     nlon = np.zeros_like(ilon)
 
-    theta = plat-90 # Rotation around y-axis
-    phi = plon #  Rotation around z-axis
+    theta = -plat-90 # Rotation around y-axis
+    phi = -plon #  Rotation around z-axis
 
     phi = phi*dtr
     theta = theta*dtr
+    if option == 2: # Rotated -> Regular
+     phi = -phi
+     theta = -theta
 
-    cos_plon = np.cos(plon)
-    if plon == 90*dtr or plon == -90*dtr:
-        cos_plon = 0
+    cos_phi = np.cos(phi)
+    if phi == 90*dtr or phi == -90*dtr:
+        cos_phi = 0
+    sin_phi = np.sin(phi)
+    if phi == 0*dtr or phi == 180*dtr or phi == -180*dtr:
+        sin_phi = 0
+    cos_theta = np.cos(theta)
+    if theta == 90*dtr or theta == -90*dtr:
+        cos_theta = 0
+    sin_theta = np.sin(theta)
+    if theta == 0*dtr :
+        sin_theta = 0
+
+    print cos_theta,cos_phi, sin_phi,sin_theta
 
     for index, (lon,lat) in enumerate(zip(ilon, ilat)):
 
         cos_lon = np.cos(lon)
         if lon == 90*dtr or lon == -90*dtr:
             cos_lon = 0
+        sin_lon = np.sin(lon)
+        if lon == 0*dtr or lon == 180*dtr or lon == -180*dtr:
+            sin_lon = 0
+        cos_lat = np.cos(lat)
+        if lat == 90*dtr or lat == -90*dtr:
+            cos_lat = 0
+        sin_lat = np.sin(lat)
+        if lat == 0*dtr :
+            sin_lat = 0
 
-        x = np.cos(lat)*cos_lon
-        y = np.cos(lat)*np.sin(lon)
-        z = np.sin(lat)
+        x = cos_lat*cos_lon
+        y = cos_lat*sin_lon
+        z = sin_lat
+
+        print cos_lat,cos_lon, sin_lon
 
 
-        if option == 1 # Regular -> Rotated
+        if option == 1: # Regular -> Rotated
 
-            x_new = np.cos(theta)*np.cos(phi)*x + np.cos(theta)*np.sin(phi)*y + np.sin(theta)*z
-            y_new = -np.sin(phi)*x + np.cos(phi)*y
-            z_new = -np.sin(theta)*np.cos(phi)*x - np.sin(theta)*np.sin(phi)*y + np.cos(theta)*z
+            x_new = cos_theta*cos_phi*x + cos_theta*sin_phi*y + sin_theta*z
+            y_new = -sin_phi*x + cos_phi*y
+            z_new = -sin_theta*cos_phi*x - sin_theta*sin_phi*y + cos_theta*z
 
-        elseif option == 2 # Rotated -> Regular
 
-            phi = -phi
-            theta = -theta
+        elif option == 2: # Rotated -> Regular
 
-            x_new = np.cos(theta)*np.cos(phi)*x + np.sin(phi)*y + np.sin(theta)*np.cos(phi)*z
-            y_new = -np.cos(theta)*np.sin(phi)*x + np.cos(phi)*y - np.sin(theta)*np.sin(phi)*z
-            z_new = -np.sin(theta)*x + np.cos(theta)*z
+            # phi = -phi
+            # theta = -theta
 
-        end
+            x_new = cos_theta*cos_phi*x + sin_phi*y + sin_theta*cos_phi*z
+            y_new = -cos_theta*sin_phi*x + cos_phi*y - sin_theta*sin_phi*z
+            z_new = -sin_theta*x + cos_theta*z
 
-        lon_new = np.arctan2(x_new,y_new) # % Convert cartesian back to spherical coordinates
-        lat_new = asin(z_new)
+
+        lon_new = np.arctan2(y_new,x_new) # % Convert cartesian back to spherical coordinates
+        lat_new = np.arcsin(z_new)
 
         nlon[index] = lon_new*rtd  # % Convert radians back to degrees
         nlat[index] = lat_new*rtd
@@ -286,7 +311,35 @@ for yr in range(2005,2006):
             nplon0 = plon[0]
             # print "place pole to cyc center (lat %2.f,lon %d)"%(plat[0], plon[0])
             #nplat, nplon = polerot(plat[0],plon[0],[90],[nplon0])
-            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[90],[nplon0])
+            print "new pole", plat[0],plon[0]
+
+            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[90],[nplon0],1)
+            print plat[0],plon[0]
+            print "north pole bacomes", nplat, nplon
+            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[11.78],[180],2)
+            print nplat, nplon
+            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[-90],[nplon0],1)
+            print "south pole becomes",nplat, nplon
+            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[-11.78],[0],2)
+            print nplat, nplon
+            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[-11.78],[90],2)
+            print nplat, nplon
+            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],nplat, nplon,2)
+            # print "back",nplat, nplon
+            #
+            #
+            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],[-90],[nplon0],1)
+            # print nplat, nplon
+            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],nplat, nplon,2)
+            # print "back",nplat, nplon
+            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],[-90],[nplon0],1)
+            # nplat, nplon = rotated_grid_transform(nplat, nplon ,[90],[nplon0],1 )
+            # print "back tweak",nplat, nplon
+            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],[11.78],[200],1)
+            # print nplat, nplon
+            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],nplat, nplon,2)
+            # print "back",nplat, nplon
+            quit()
 
             # grid around cyclone center
             dlon = 10
@@ -310,8 +363,16 @@ for yr in range(2005,2006):
                  gridlon = np.zeros_like(gridlat)+ilon
 
                 #  print "place pole back to NP"
-                 nlat, nlon = polerot(xnplat, xnplon,gridlat,gridlon)
-                 nlon = nlon+90+plon
+                 print gridlat
+                 print gridlon
+                 print plat[0],plon[0]
+                 nlat, nlon = rotated_grid_transform(plat[0],plon[0],gridlat,gridlon,2)
+                 print nlat
+                 print nlon
+                 print plat[0],plon[0]
+                 quit()
+                 #nlat, nlon = polerot(xnplat, xnplon,gridlat,gridlon)
+                 #nlon = nlon+90+plon
 
                  slpint = interpolate.interp2d(lons, lats, slp[iyr[ntrk-1,n],it[ntrk-1,n],:,:], kind='cubic')
 
