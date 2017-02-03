@@ -71,6 +71,67 @@ def polerot(plat,plon,ilat,ilon):
     return nlat,nlon
 
 
+def rotated_grid_transform(plat, plon, ilat, ilon, option):
+
+    import numpy as np
+
+    rad  =6371032 #in m
+    pi   = np.pi
+    dtr  = pi/180.
+    rtd  = 180./pi
+
+    ilon[:] = [x*dtr for x in ilon]
+    ilat[:] = [x*dtr for x in ilat]
+
+    nlat = np.zeros_like(ilat)
+    nlon = np.zeros_like(ilon)
+
+    theta = plat-90 # Rotation around y-axis
+    phi = plon #  Rotation around z-axis
+
+    phi = phi*dtr
+    theta = theta*dtr
+
+    cos_plon = np.cos(plon)
+    if plon == 90*dtr or plon == -90*dtr:
+        cos_plon = 0
+
+    for index, (lon,lat) in enumerate(zip(ilon, ilat)):
+
+        cos_lon = np.cos(lon)
+        if lon == 90*dtr or lon == -90*dtr:
+            cos_lon = 0
+
+        x = np.cos(lat)*cos_lon
+        y = np.cos(lat)*np.sin(lon)
+        z = np.sin(lat)
+
+
+        if option == 1 # Regular -> Rotated
+
+            x_new = np.cos(theta)*np.cos(phi)*x + np.cos(theta)*np.sin(phi)*y + np.sin(theta)*z
+            y_new = -np.sin(phi)*x + np.cos(phi)*y
+            z_new = -np.sin(theta)*np.cos(phi)*x - np.sin(theta)*np.sin(phi)*y + np.cos(theta)*z
+
+        elseif option == 2 # Rotated -> Regular
+
+            phi = -phi
+            theta = -theta
+
+            x_new = np.cos(theta)*np.cos(phi)*x + np.sin(phi)*y + np.sin(theta)*np.cos(phi)*z
+            y_new = -np.cos(theta)*np.sin(phi)*x + np.cos(phi)*y - np.sin(theta)*np.sin(phi)*z
+            z_new = -np.sin(theta)*x + np.cos(theta)*z
+
+        end
+
+        lon_new = np.arctan2(x_new,y_new) # % Convert cartesian back to spherical coordinates
+        lat_new = asin(z_new)
+
+        nlon[index] = lon_new*rtd  # % Convert radians back to degrees
+        nlat[index] = lat_new*rtd
+
+    return nlat,nlon
+
 
 
 dset = "erain"
@@ -224,7 +285,8 @@ for yr in range(2005,2006):
             nplat0 = plat[0]
             nplon0 = plon[0]
             # print "place pole to cyc center (lat %2.f,lon %d)"%(plat[0], plon[0])
-            nplat, nplon = polerot(plat[0],plon[0],[90],[nplon0])
+            #nplat, nplon = polerot(plat[0],plon[0],[90],[nplon0])
+            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[90],[nplon0])
 
             # grid around cyclone center
             dlon = 10
