@@ -79,6 +79,9 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
     pi   = np.pi
     dtr  = pi/180.
     rtd  = 180./pi
+    print 'rotated'
+    print plat, plon
+
 
     ilon[:] = [x*dtr for x in ilon]
     ilat[:] = [x*dtr for x in ilat]
@@ -86,8 +89,8 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
     nlat = np.zeros_like(ilat)
     nlon = np.zeros_like(ilon)
 
-    theta = -plat-90 # Rotation around y-axis
-    phi = -plon #  Rotation around z-axis
+    theta = plat-90 # Rotation around y-axis
+    phi = plon #  Rotation around z-axis
 
     phi = phi*dtr
     theta = theta*dtr
@@ -155,9 +158,20 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
         nlon[index] = lon_new*rtd  # % Convert radians back to degrees
         nlat[index] = lat_new*rtd
 
+    print 'end rotation'
     return nlat,nlon
 
+# test!!!!
 
+# Rotate Pole
+# nplat, nplon = rotated_grid_transform(11,165,[88],[50],1)
+# print nplat, nplon
+# Reverse rotation
+# nplat, nplon = rotated_grid_transform(11,165,[nplat],[nplon],2)
+# print nplat, nplon
+# quit()
+
+# end test!!!
 
 dset = "erain"
 scheme = "UOM"
