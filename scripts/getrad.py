@@ -416,7 +416,7 @@ for yr in range(2005,2006):
                     rad[i]   = 0
                     flat[i]  =  plat[0]
                     flon[i]  =  plon[0]
-                    flslp[i] = fslp
+                    flslp[i]    = fslp
                     # fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format
                     #           ("angle=",ilon,"lon=",flon[i],"lat=",flat[i],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
 
