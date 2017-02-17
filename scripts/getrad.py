@@ -79,8 +79,8 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
     pi   = np.pi
     dtr  = pi/180.
     rtd  = 180./pi
-    print 'rotated'
-    print plat, plon
+    # print 'rotated'
+    # print plat, plon
 
 
     ilon[:] = [x*dtr for x in ilon]
@@ -111,7 +111,7 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
     if theta == 0*dtr :
         sin_theta = 0
 
-    print cos_theta,cos_phi, sin_phi,sin_theta
+    # print cos_theta,cos_phi, sin_phi,sin_theta
 
     for index, (lon,lat) in enumerate(zip(ilon, ilat)):
 
@@ -132,7 +132,7 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
         y = cos_lat*sin_lon
         z = sin_lat
 
-        print cos_lat,cos_lon, sin_lon
+        # print cos_lat,cos_lon, sin_lon
 
 
         if option == 1: # Regular -> Rotated
@@ -158,7 +158,7 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
         nlon[index] = lon_new*rtd  # % Convert radians back to degrees
         nlat[index] = lat_new*rtd
 
-    print 'end rotation'
+    # print 'end rotation'
     return nlat,nlon
 
 # test!!!!
@@ -189,7 +189,7 @@ for yr in range(2005,2006):
     # for iyr,cyr in enumerate(np.arange(yr,yr+1)):
     for iy,cyr in enumerate(np.arange(yr-1,yr+2)):
     #  print "loop", iy, cyr
-     fnc  = "/Users/irudeva/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
+     fnc  = "/Users/Irina/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
      print "fnc  =",fnc
 
     # read netcdf
@@ -321,77 +321,43 @@ for yr in range(2005,2006):
             plat = [lat[ntrk-1,n]]
             #  plon = [162]
             #  plat = [33]
-            nplat0 = plat[0]
-            nplon0 = plon[0]
-            # print "place pole to cyc center (lat %2.f,lon %d)"%(plat[0], plon[0])
-            #nplat, nplon = polerot(plat[0],plon[0],[90],[nplon0])
-            print "new pole", plat[0],plon[0]
-
-            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[90],[nplon0],1)
-            print plat[0],plon[0]
-            print "north pole bacomes", nplat, nplon
-            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[11.78],[180],2)
-            print nplat, nplon
-            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[-90],[nplon0],1)
-            print "south pole becomes",nplat, nplon
-            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[-11.78],[0],2)
-            print nplat, nplon
-            nplat, nplon = rotated_grid_transform(plat[0],plon[0],[-11.78],[90],2)
-            print nplat, nplon
-            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],nplat, nplon,2)
-            # print "back",nplat, nplon
-            #
-            #
-            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],[-90],[nplon0],1)
-            # print nplat, nplon
-            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],nplat, nplon,2)
-            # print "back",nplat, nplon
-            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],[-90],[nplon0],1)
-            # nplat, nplon = rotated_grid_transform(nplat, nplon ,[90],[nplon0],1 )
-            # print "back tweak",nplat, nplon
-            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],[11.78],[200],1)
-            # print nplat, nplon
-            # nplat, nplon = rotated_grid_transform(plat[0],plon[0],nplat, nplon,2)
-            # print "back",nplat, nplon
-            quit()
+            # nplat0 = plat[0]
+            # nplon0 = plon[0]
 
             # grid around cyclone center
             dlon = 10
             dlat = 0.5
             lonrange = np.arange(0., 360., dlon)
-            latrange = np.arange(90., 69., -dlat)
+            latrange = np.arange(90., 64.5, -dlat)
 
+            rslp     = np.zeros_like(latrange)
             dslp     = np.zeros_like(latrange[:-1])
             lslp     = np.zeros_like(lonrange)
             flslp    = np.copy(lslp)
+            flat     = np.copy(lslp)
+            flon     = np.copy(lslp)
+            rad      = np.copy(lslp)
+
+            nlon     = np.zeros((latrange.size,lonrange.size))
+            nlat     = np.zeros_like(nlon)
 
             mr = 4  # min radius = mr*dlat (deg.lat)
 
             for i,ilon in enumerate(lonrange) :
                  print "t=",n,"/",nit,"   ilon=",ilon
 
-                 xnplat = nplat[0]
-                 xnplon = nplon[0]
-
                  gridlat = np.copy(latrange)
                  gridlon = np.zeros_like(gridlat)+ilon
 
-                #  print "place pole back to NP"
-                 print gridlat
-                 print gridlon
-                 print plat[0],plon[0]
-                 nlat, nlon = rotated_grid_transform(plat[0],plon[0],gridlat,gridlon,2)
-                 print nlat
-                 print nlon
-                 print plat[0],plon[0]
-                 quit()
-                 #nlat, nlon = polerot(xnplat, xnplon,gridlat,gridlon)
-                 #nlon = nlon+90+plon
+                 nlat[:,i], nlon[:,i] = rotated_grid_transform(plat[0],plon[0],gridlat,gridlon,2)
 
                  slpint = interpolate.interp2d(lons, lats, slp[iyr[ntrk-1,n],it[ntrk-1,n],:,:], kind='cubic')
 
                  for j,jlat in enumerate(latrange[:-1]) :
-                     dslp[j] = slpint(nlon[j+1],nlat[j+1]) - slpint(nlon[j],nlat[j])
+                     rslp[j] = slpint(nlon[j,i],nlat[j,i])[0]
+                     dslp[j] = slpint(nlon[j+1,i],nlat[j+1,i]) - slpint(nlon[j,i],nlat[j,i])
+
+                 print rslp
 
                  if all(dslp[0:mr-1]) < 0. :
                      print "!!!! slp bug"
@@ -401,50 +367,73 @@ for yr in range(2005,2006):
 
                  for j in range(mr,latrange.size-1):
                      if dslp[j] < 0 or j == latrange.size-2:
-                         slp0 = slpint(nlon[0],nlat[0])
-                         lslp[i] = slpint(nlon[j],nlat[j])[0]
-                         fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:4.1f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",nlon[j+1],"lat=",nlat[j+1],"rad=",(j+1)*dlat,"cslp=",slp0[0],"fslp=",lslp[i]))
-                        #  ftime.sleep(10)
+                         slp0 = slpint(nlon[0,i],nlat[0,i])
+                         lslp[i] = slpint(nlon[j,i],nlat[j,i])[0]
+                         fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:4.1f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",nlon[j+1,i],"lat=",nlat[j+1,i],"rad=",(j+1)*dlat,"cslp=",slp0[0],"fslp=",lslp[i]))
+                         #  ftime.sleep(10)
                          break
 
 
             # find the last closed isobar (fslp)
-            print "np.amin=", np.amin(lslp)
-            print lslp
             fslp = np.amin(lslp)
-            print fslp
-            print fslp-slp0[0]  # add this critarium
+            cycdepth = fslp-slp0[0]
 
-         #  !!! skip if fslp-slp0 < 1.
+            # set rad = 0 for weak cyclones
+            if cycdepth >= 1 :
+                # find where last closed isobar fslp cross each radius
+                gridlat = np.copy(latrange)
+                for i,ilon in enumerate(lonrange) :
+                    for j in range(mr,latrange.size-1):
+                     slp2 = slpint(nlon[j+1,i],nlat[j+1,i])[0]
+                     slp1 = slpint(nlon[j,i],nlat[j,i])[0]
 
-            # find where last closed isobar fslp cross each radius
-            gridlat = np.copy(latrange)
-            for ilon in lonrange:
-                for j in range(mr,latrange.size):
-                 slp2 = slpint(nlon[j],nlat[j])[0]
-                 slp1 = slpint(nlon[j-1],nlat[j-1])[0]
+                     if slp1 <= fslp and slp2 > fslp :
+                        rad[i] = j*dlat + (fslp-slp1)/(slp2-slp1)*dlat
+                        flat, flon = rotated_grid_transform(plat[0],plon[0],90-rad[i],[ilon],2)
+                        print "flat=",flat, "flon=",flon
+                        flslp[i] = slpint(flon[0],flat[0])[0]
+                        #  fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",flon[0],"lat=",flat[0],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
+                        break
 
-                 print ilon,j, fslp, slp1, slp2
-                 if slp1 <= fslp and slp2 > fslp :
-                     tlat = 90. - (j-1)*dlat - (fslp-slp1)/(slp2-slp1)*dlat
-                     print ilon,j, 90. - (j-1)*dlat, gridlat[j-1]
-                     flat, flon = polerot(xnplat, xnplon,[tlat,90],[ilon,ilon])
-                    #  print "xnplat=",xnplat, "xnplon=",xnplon
-                     print "flat=",flat, "flon=",flon
-                     flslp[i] = slpint(flon[0],flat[0])[0]
-                     fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",flon[0],"lat=",flat[0],"rad=",90.-tlat,"cslp=",slp0[0],"fslp=",flslp[i]))
-                     break
+                     if j == latrange.size-1:
+                        if slpint(nlon[mr,i],nlat[mr,i])[0] > fslp :
+                            rad[i] = mr*dlat
+                            flat[i], flon[i] = rotated_grid_transform(plat[0],plon[0],rad[i],[ilon],2)
+                            flslp[i] = slpint(flon[0],flat[0])[0]
+                            #  fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",flon[0],"lat=",flat[0],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
+                        elif slpint(nlon[j],nlat[j])[0] < fslp :
+                            print "!!!! fslp bug"
+                            print fslp, slpint(nlon[j],nlat[j])[0]
+                            #  ftime.sleep(20)
+                            quit()
 
-                 if j == latrange.size-1 and slpint(nlon[mr-1],nlat[mr-1])[0] > fslp :
-                     tlat = 90.-mr*dlat
-                     flat, flon = polerot(xnplat, xnplon,[tlat,90],[ilon,ilon])
-                     flslp[i] = slpint(flon[0],flat[0])[0]
-                     fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",flon[0],"lat=",flat[0],"rad=",90.-tlat,"cslp=",slp0[0],"fslp=",flslp[i]))
+                    # fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format
+                    #           ("angle=",ilon,"lon=",flon[i],"lat=",flat[i],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
+
+
+            else :
+                for i,ilon in enumerate(lonrange) :
+                    rad[i]   = 0
+                    flat[i]  =  plat[0]
+                    flon[i]  =  plon[0]
+                    flslp[i] = fslp
+                    # fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format
+                    #           ("angle=",ilon,"lon=",flon[i],"lat=",flat[i],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
+
+            Area = 0
+            for i,ilon in enumerate(lonrange) :
+                Area = Area + rad[i]**2
+
+            effrad = np.sqrt(Area)
+            fout.write(" {:>14}{:7.3f}\n".format("effrad=",effrad))
+
+            for i,ilon in enumerate(lonrange) :
+                fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format
+                          ("angle=",ilon,"lon=",flon[i],"lat=",flat[i],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
 
 
             # end radius estimation
 
-            break # for the first time step of a track
         break  # for testing - first tack only
 
 
@@ -452,106 +441,3 @@ for yr in range(2005,2006):
     print 'ftrk closed'
 
     quit()
-
-    #get radius
-
-
-
-
-    #pole rotation
-    for itrk in range(0,ntrk):
-        fout.write("Track = %d\n"%itrk)
-        for ip in range(npnt[itrk]):
-             fout.write("t %d out of %d\n"%(ip+1,npnt[itrk]))
-
-             print "start ip=",ip
-             print date[itrk,ip]
-
-            #  print 'lon = ', lon[itrk,ip]
-            #  print 'lat = ', lat[itrk,ip]
-             plon = [lon[itrk,ip]]
-             plat = [lat[itrk,ip]]
-            #  plon = [162]
-            #  plat = [33]
-             nplat0 = plat[0]
-             nplon0 = plon[0]
-             print "place pole to cyc center (lat %2.f,lon %d)"%(plat[0], plon[0])
-             nplat, nplon = polerot(plat[0],plon[0],[90],[nplon0])
-            #  print 'lat = ', tmplat1
-            #  print 'lon = ', tmplon1
-            #  print 'nlat = ', nlat
-            #  print 'nlon = ', nlon
-
-             lonrange = np.arange(0., 360., 10.)
-             latrange = np.arange(90., 69., -0.5)
-             dslp     = np.zeros_like(latrange[1:-1])
-
-             for ilon in lonrange :
-                 print "ilon=",ilon
-                 fout.write("ilon=%d\n"%ilon)
-
-                 xnplat = nplat[0]
-                 xnplon = nplon[0]
-
-                 gridlat = np.copy(latrange)
-                 gridlon = np.zeros_like(gridlat)+ilon
-
-                 print "place pole back to NP"
-                 nlat, nlon = polerot(xnplat, xnplon,gridlat,gridlon)
-                 nlon = nlon+90+plon
-
-                #  print 'nlat=',nlat
-                #  print 'nlon=',nlon
-
-                 slpint = interpolate.interp2d(lons, lats, slp[iyr[itrk,ip],it[itrk,ip],:,:], kind='cubic')
-
-                 for i,ilat in enumerate(latrange[:-2]) :
-                     print i,nlat[0],nlon[0]
-                     print slpint(nlon[i],nlat[i])
-                     print i+2,nlat[2],nlon[2]
-                     print slpint(nlon[i+2],nlat[i+2])
-                     print 'cslp=',cslp[itrk,ip]
-                    #  print slpint(nlon[i+2],nlat[i+2]) - slpint(nlon[i],nlat[i])
-                     dslp[i] = slpint(nlon[i+2],nlat[i+2]) - slpint(nlon[i],nlat[i])
-                    #  print  dslp[i]
-
-                    #  print slpint(0,30)
-                    #  print lats[60]
-                    #  print slp[iyr[ntrk-1,n],it[ntrk-1,n],60,0]
-
-                    #  print lats[57]
-                    #  print lons[162]
-                    #  print slp[iyr[itrk,ip],it[itrk,ip],57,162]
-                    #  print slpint(162,33)
-                     #
-                     print iyr[itrk,ip],it[itrk,ip]
-                    #  break
-
-                 if all(dslp[0:4]) < 0. :
-                     print "!!!! slp bug"
-                     print dslp
-                    #  ftime.sleep(20)
-                     quit()
-
-                 for i in range(5,latrange.size-2):
-                     if dslp[i] < 0:
-                         fout.write(" %d %d  %f %f\n"%(i,latrange[i+1],slpint(nlon[i+1],nlat[i+1]),slpint(nlon[0],nlat[0])))
-                         fout.write(" %d %d\n"%(nlon[0],nlat[0]))
-                         fout.write(" %d %d\n"%(nlon[i+1],nlat[i+1]))
-                        #  print "rjad:",i,latrange[i+1],[slpint(nlon[j],nlat[j]) for j in range(latrange.size-2)]
-                        #  print "dslp:",[dslp[j] for j in range(i+1)]
-                        #  ftime.sleep(10)
-                         break
-
-
-
-                #  break  # loop over lonrange
-            #  ftime.sleep(5)
-
-        # break
-        # ftime.sleep(5)
-
-
-                #  quit()
-
-# quit()
