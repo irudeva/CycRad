@@ -160,6 +160,36 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
     # print 'end rotation'
     return nlat,nlon
 
+def find_nearest(array,value):
+    idx = (np.abs(array-value)).argmin()
+    return idx
+
+def dist(plat,plon,lat,lon):
+
+    rad  =6371032 #in m
+    pi   = np.pi
+    dtr  = pi/180.
+    rtd  = 180./pi
+
+    dist=0.
+    lat1=plat*dtr
+    lon1=plon*dtr
+
+    lat2=lat*dtr
+    lon2=lon*dtr
+
+    if lon1==lon2 :
+        dist=abs(lat1-lat2)
+        dist=rad*dist
+    elif lat1==lat2 :
+        dist=np.arccos(np.cos(lat1)**2*(np.cos(lon2-lon1)-1.)+1.)
+        dist=rad*dist
+    else :
+        dist=np.arccos(np.sin(lat1)*np.sin(lat2)+np.cos(lat1)*np.cos(lat2)*np.cos(lon2-lon1))
+        dist=rad*dist
+
+    return dist
+
 # test!!!!
 
 # Rotate Pole
@@ -171,6 +201,11 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
 # quit()
 
 # end test!!!
+
+R  =6371032 #in m
+pi   = np.pi
+deg = R*pi/180
+
 
 dset = "erain"
 scheme = "UOM"
@@ -188,7 +223,7 @@ for yr in range(2005,2006):
     # for iyr,cyr in enumerate(np.arange(yr,yr+1)):
     for iy,cyr in enumerate(np.arange(yr-1,yr+2)):
     #  print "loop", iy, cyr
-     fnc  = "/Users/Irina/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
+     fnc  = "/Users/irudeva/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
      print "fnc  =",fnc
 
     # read netcdf
@@ -210,9 +245,11 @@ for yr in range(2005,2006):
      mslp = nc.variables[varnam[3]][:]/100.
      #mslp0=mslp/100.
 
-     # fix for leap years
+     # fix for leap years !!!
      if iy == 0:
          slp=np.tile(mslp,(3,1,1,1))
+     elif iy == 1 :
+         gridcyc = np.zeros_like(mslp)
      slp[iy,:time.size,:,:] = mslp
 
 # create an array with 3 time series
@@ -424,13 +461,64 @@ for yr in range(2005,2006):
                 Area = Area + rad[i]**2
             Area = Area/lonrange.size
 
-            effrad = np.sqrt(Area)
-            fout.write(" {:>14}{:7.3f}\n".format("effrad=",effrad))
+            if all(rad) > 0 :
+                effrad = np.sqrt(Area)
+                fout.write(" {:>14}{:7.3f}\n".format("effrad=",effrad))
 
-            if Area > 0 :
                 for i,ilon in enumerate(lonrange) :
                     fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format
                           ("angle=",ilon,"lon=",flon[i],"lat=",flat[i],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
+
+            else:
+                effrad = 0
+                fout.write(" {:>14}{:7.3f}\n".format("effrad=",effrad))
+
+           # cyclones onto the regular grid
+
+            print effrad
+            # if effrad != 0 and iyr[ntrk-1,n]==yr:
+            if effrad != 0 :
+
+               maxrad = np.amax(rad)+1
+
+               minlat = plat[0]-maxrad
+               if minlat < -90 :
+                   minlat = -90.
+                   j1 = np.where(lats==-90.)[0]
+               else :
+                   j1 = find_nearest(lats,minlat)
+
+               maxlat = plat[0]+maxrad
+               if maxlat > 90 :
+                   maxlat = 90.
+                   j2 = np.where(lats==90.)[0]
+               else :
+                   j2 = find_nearest(lats,maxlat)
+
+               if j1 < j2:
+                   jrange = range(j1,j2+1)
+               else:
+                   jrange = range(j2,j1+1)
+
+               for j in jrange:
+                    for i,ilon in enumerate(lons):
+
+                        print ilon, plon[0]
+                        print lats[j], plat[0]
+
+                        gdist = dist(plat[0],plon[0],lats[j],ilon)
+                        gdist = gdist/deg
+
+                        if gdist <= maxrad:
+                            glat, glon = rotated_grid_transform(plat[0],plon[0],[lats[j]],[ilon],1)
+
+                            if glon[0] < 0 :
+                                glon[0] = glon[0] + 360
+
+                            indlon = find_nearest(lonrange,glon[0])
+
+                            if gdist <= rad[indlon] :
+                                gridcyc[it[ntrk-1,n],j,i] = 1
 
             # end radius estimation
             # break  # for the first step of the track
