@@ -221,7 +221,8 @@ for yr in range(2005,2006):
     fout = open(frad, 'wb')
 
     # for iyr,cyr in enumerate(np.arange(yr,yr+1)):
-    for iy,cyr in enumerate(np.arange(yr-1,yr+2)):
+    # for iy,cyr in enumerate(np.arange(yr-1,yr+2)):
+    for iy,cyr in enumerate([yr-1,yr+1,yr]):
     #  print "loop", iy, cyr
      fnc  = "/Users/irudeva/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
      print "fnc  =",fnc
@@ -275,7 +276,7 @@ for yr in range(2005,2006):
     #read trk
 
     print 'ftrk reading:'
-    max_ntrk =  20000
+    max_ntrk =  40 #20000
     max_trklength = 200
     npnt  = np.zeros(max_ntrk,dtype = np.int)
     lon  = np.zeros((max_ntrk,max_trklength))
@@ -503,9 +504,6 @@ for yr in range(2005,2006):
                for j in jrange:
                     for i,ilon in enumerate(lons):
 
-                        print ilon, plon[0]
-                        print lats[j], plat[0]
-
                         gdist = dist(plat[0],plon[0],lats[j],ilon)
                         gdist = gdist/deg
 
@@ -520,6 +518,16 @@ for yr in range(2005,2006):
                             if gdist <= rad[indlon] :
                                 gridcyc[it[ntrk-1,n],j,i] = 1
 
+                            # print "to grid:",it[ntrk-1,n],plat[0],plon[0],effrad
+
+            else:
+                j = find_nearest(lats,plat[0])
+                i = find_nearest(lons,plon[0])
+
+                gridcyc[it[ntrk-1,n],j,i] = 2
+
+
+
             # end radius estimation
             # break  # for the first step of the track
 
@@ -529,4 +537,62 @@ for yr in range(2005,2006):
     f.close()
     print 'ftrk closed'
 
-    quit()
+    #---NetCDF write---------------------------------------------------------------
+print("Start NetCDF writing")
+
+# varlist = np.zeros(16, dtype = {'names': ['name', 'outname', 'data', 'scale'],
+#                                 'formats': ['a5', 'a5', '(241,480)f4', 'f4']} )
+#
+#
+# varlist[0] = ("u","u",u,1)
+# varlist[1] = ("v","v",v,1)
+# for iv in range(varlist['name'].size) :
+
+
+ncvar = "cyclone"
+print 'ncvar=',ncvar
+fcyc = '../output/cyc.%d.nc' % (yr)
+ncout = Dataset(fcyc, 'w', format='NETCDF4')
+ncout.description = "Cyclone area from  %s" % (ftrk)
+
+# Using our previous dimension info, we can create the new time dimension
+# Even though we know the size, we are going to set the size to unknown
+
+dimnam=('longitude','latitude','time')
+varnam=['longitude','latitude','time',ncvar]
+
+ncout.createDimension(dimnam[0], lons.size)
+ncout.createDimension(dimnam[1], lats.size)
+ncout.createDimension(dimnam[2], None)
+
+for nv in range(0, 3) :
+    ncout_var = ncout.createVariable(varnam[nv], nc.variables[varnam[nv]].dtype,dimnam[nv])
+    for ncattr in nc.variables[varnam[nv]].ncattrs():
+        ncout_var.setncattr(ncattr, nc.variables[varnam[nv]].getncattr(ncattr))
+#print(nc.variables['latitude'].ncattrs())
+
+ncout.variables[dimnam[0]][:] = lons
+ncout.variables[dimnam[1]][:] = lats
+ncout.variables[dimnam[2]][:] = time
+#ncout.variables[dimnam[2]][:] = 1
+
+print gridcyc.shape
+print lons.size
+print lats.size
+print time.size
+
+ncout_var = ncout.createVariable(ncvar, 'f',dimnam[::-1])
+print ncout_var.shape
+#ncout_var.long_name = 'streamfunction'
+# ncout_var.scale_factor = varlist["scale"][iv]
+# ncout_var.add_offset   = 0.
+# ncout_var.units        = 'scale   %s' % varlist["scale"][iv]
+
+#print qx.shape
+#print ncout_var.shape
+# ncout_var[:,:,:] = np.swapaxes(gridcyc,0,2)
+ncout_var[:,:,:] = gridcyc
+
+ncout.close()
+
+##---End NetCDF write---------------------------------------------------------------
