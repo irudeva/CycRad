@@ -82,7 +82,6 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
     # print 'rotated'
     # print plat, plon
 
-
     ilon[:] = [x*dtr for x in ilon]
     ilat[:] = [x*dtr for x in ilat]
 
@@ -239,7 +238,7 @@ for yr in range(2005,2006):
     #read trk
 
     print 'ftrk reading:'
-    max_ntrk =  2 #20000
+    max_ntrk =  20000
     max_trklength = 200
     npnt  = np.zeros(max_ntrk,dtype = np.int)
     lon  = np.zeros((max_ntrk,max_trklength))
@@ -344,7 +343,7 @@ for yr in range(2005,2006):
             mr = 4  # min radius = mr*dlat (deg.lat)
 
             for i,ilon in enumerate(lonrange) :
-                 print "t=",n,"/",nit,"   ilon=",ilon
+                #  print "t=",n,"/",nit,"   ilon=",ilon
 
                  gridlat = np.copy(latrange)
                  gridlon = np.zeros_like(gridlat)+ilon
@@ -357,7 +356,7 @@ for yr in range(2005,2006):
                      rslp[j] = slpint(nlon[j,i],nlat[j,i])[0]
                      dslp[j] = slpint(nlon[j+1,i],nlat[j+1,i]) - slpint(nlon[j,i],nlat[j,i])
 
-                 print rslp
+                #  print rslp
 
                  if all(dslp[0:mr-1]) < 0. :
                      print "!!!! slp bug"
@@ -369,8 +368,8 @@ for yr in range(2005,2006):
                      if dslp[j] < 0 or j == latrange.size-2:
                          slp0 = slpint(nlon[0,i],nlat[0,i])
                          lslp[i] = slpint(nlon[j,i],nlat[j,i])[0]
-                         fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:4.1f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",nlon[j+1,i],"lat=",nlat[j+1,i],"rad=",(j+1)*dlat,"cslp=",slp0[0],"fslp=",lslp[i]))
-                         #  ftime.sleep(10)
+                        #  fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:4.1f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",nlon[j+1,i],"lat=",nlat[j+1,i],"rad=",(j+1)*dlat,"cslp=",slp0[0],"fslp=",lslp[i]))
+                        #  ftime.sleep(10)
                          break
 
 
@@ -389,8 +388,8 @@ for yr in range(2005,2006):
 
                      if slp1 <= fslp and slp2 > fslp :
                         rad[i] = j*dlat + (fslp-slp1)/(slp2-slp1)*dlat
-                        flat, flon = rotated_grid_transform(plat[0],plon[0],90-rad[i],[ilon],2)
-                        print "flat=",flat, "flon=",flon
+                        flat[i], flon[i] = rotated_grid_transform(plat[0],plon[0],[90-rad[i]],[ilon],2)
+                        # print "flat=",flat, "flon=",flon
                         flslp[i] = slpint(flon[0],flat[0])[0]
                         #  fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",flon[0],"lat=",flat[0],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
                         break
@@ -423,18 +422,20 @@ for yr in range(2005,2006):
             Area = 0
             for i,ilon in enumerate(lonrange) :
                 Area = Area + rad[i]**2
+            Area = Area/lonrange.size
 
             effrad = np.sqrt(Area)
             fout.write(" {:>14}{:7.3f}\n".format("effrad=",effrad))
 
-            for i,ilon in enumerate(lonrange) :
-                fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format
+            if Area > 0 :
+                for i,ilon in enumerate(lonrange) :
+                    fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format
                           ("angle=",ilon,"lon=",flon[i],"lat=",flat[i],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
 
-
             # end radius estimation
+            # break  # for the first step of the track
 
-        break  # for testing - first tack only
+        # break  # for testing - first tack only
 
 
     f.close()
