@@ -224,7 +224,7 @@ for yr in range(2005,2006):
     # for iy,cyr in enumerate(np.arange(yr-1,yr+2)):
     for iy,cyr in enumerate([yr-1,yr+1,yr]):
     #  print "loop", iy, cyr
-     fnc  = "/Users/irudeva/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
+     fnc  = "/Users/Irina/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
      print "fnc  =",fnc
 
     # read netcdf
@@ -378,7 +378,7 @@ for yr in range(2005,2006):
             nlon     = np.zeros((latrange.size,lonrange.size))
             nlat     = np.zeros_like(nlon)
 
-            mr = 4  # min radius = mr*dlat (deg.lat)
+            mr = 2  # min radius = mr*dlat (deg.lat)
 
             for i,ilon in enumerate(lonrange) :
                 #  print "t=",n,"/",nit,"   ilon=",ilon
@@ -396,16 +396,15 @@ for yr in range(2005,2006):
 
                 #  print rslp
 
-                 if all(dslp[0:mr-1]) < 0. :
-                     print "!!!! slp bug"
-                     print dslp
-                    #  ftime.sleep(20)
-                     quit()
+                #  if any(dslp[0:mr-1]) < 0. :
+                #      print "!!!! slp bug"
+                #      print dslp
+                #     #  ftime.sleep(20)
+                #      quit()
 
                  for j in range(mr,latrange.size-1):
                      if dslp[j] < 0 or j == latrange.size-2:
-                         slp0 = slpint(nlon[0,i],nlat[0,i])
-                         lslp[i] = slpint(nlon[j,i],nlat[j,i])[0]
+                         lslp[i] = rslp[j]
                         #  fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:4.1f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",nlon[j+1,i],"lat=",nlat[j+1,i],"rad=",(j+1)*dlat,"cslp=",slp0[0],"fslp=",lslp[i]))
                         #  ftime.sleep(10)
                          break
@@ -413,6 +412,8 @@ for yr in range(2005,2006):
 
             # find the last closed isobar (fslp)
             fslp = np.amin(lslp)
+            slp0 = slpint(nlon[0,0],nlat[0,0])
+            print slp0[0],cslp[ntrk-1,n] 
             cycdepth = fslp-slp0[0]
 
             # set rad = 0 for weak cyclones
