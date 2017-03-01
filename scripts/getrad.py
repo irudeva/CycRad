@@ -5,6 +5,8 @@ from windspharm.tools import prep_data, recover_data, order_latdim
 from scipy import interpolate
 import datetime as datetime  # Python standard library datetime  module
 import time as ftime
+import scipy.ndimage.filters as filters
+import scipy.ndimage.morphology as morphology
 
 
 def polerot(plat,plon,ilat,ilon):
@@ -79,8 +81,6 @@ def rotated_grid_transform(plat, plon, ilat, ilon, option):
     pi   = np.pi
     dtr  = pi/180.
     rtd  = 180./pi
-    # print 'rotated'
-    # print plat, plon
 
     ilon[:] = [x*dtr for x in ilon]
     ilat[:] = [x*dtr for x in ilat]
@@ -190,6 +190,45 @@ def dist(plat,plon,lat,lon):
 
     return dist
 
+def detect_local_minima(arr):
+    # http://stackoverflow.com/questions/3684484/peak-detection-in-a-2d-array/3689710#3689710
+    """
+    Takes an array and detects the troughs using the local maximum filter.
+    Returns a boolean mask of the troughs (i.e. 1 when
+    the pixel's value is the neighborhood maximum, 0 otherwise)
+    """
+    # define an connected neighborhood
+    # http://www.scipy.org/doc/api_docs/SciPy.ndimage.morphology.html#generate_binary_structure
+    neighborhood = morphology.generate_binary_structure(len(arr.shape),2)
+    # apply the local minimum filter; all locations of minimum value
+    # in their neighborhood are set to 1
+    # http://www.scipy.org/doc/api_docs/SciPy.ndimage.filters.html#minimum_filter
+    local_min = (filters.minimum_filter(arr, footprint=neighborhood)==arr)
+    # local_min is a mask that contains the peaks we are
+    # looking for, but also the background.
+    # In order to isolate the peaks we must remove the background from the mask.
+    #
+    # we create the mask of the background
+    background = (arr==0)
+    #
+    # a little technicality: we must erode the background in order to
+    # successfully subtract it from local_min, otherwise a line will
+    # appear along the background border (artifact of the local minimum filter)
+    # http://www.scipy.org/doc/api_docs/SciPy.ndimage.morphology.html#binary_erosion
+    eroded_background = morphology.binary_erosion(
+        background, structure=neighborhood, border_value=1)
+    #
+    # we obtain the final mask, containing only peaks,
+    # by removing the background from the local_min mask
+    detected_minima = local_min - eroded_background
+    return np.where(detected_minima)
+
+def local_minima(array2d):
+    return ((array2d <= np.roll(array2d,  1, 0)) &
+            (array2d <= np.roll(array2d, -1, 0)) &
+            (array2d <= np.roll(array2d,  1, 1)) &
+            (array2d <= np.roll(array2d, -1, 1)))
+
 # test!!!!
 
 # Rotate Pole
@@ -227,7 +266,7 @@ for yr in range(2005,2006):
      fnc  = "/Users/Irina/work/DATA/%st/erain.mslp.%d.nc"%(dset,cyr)
      print "fnc  =",fnc
 
-    # read netcdf
+    # read netcdfF
      print 'fnc reading...'
      dimnam=('longitude','latitude','time')
      varnam=['longitude','latitude','time','msl']
@@ -263,14 +302,7 @@ for yr in range(2005,2006):
     #  print len(dtall)
     #  print dtall[:,:10]
 
-    print "\nSLP Interpolation"
-    # data from south to north
-
-    #for t in range(time.size) :
-    # slpint = interpolate.interp2d(lons, lats, mslp[0,:,:], kind='cubic')
-    # print slpint(0,30)
-
-    print "end interpolation"
+    print "Reading TRK"
 
 
     #read trk
@@ -356,6 +388,125 @@ for yr in range(2005,2006):
             # start radius estimation
             plon = [lon[ntrk-1,n]]
             plat = [lat[ntrk-1,n]]
+
+            #find the closest grid value to the cyclone center
+            iplon = find_nearest(lons,plon[0])
+            iplat = find_nearest(lats,plat[0])
+
+            iplon0 = iplon
+            iplat0 = iplat
+            #
+            # print "initial iplon,iplat = ", iplon,iplat
+
+            #check if it is a local minimum
+
+            # create an extended array
+            slpext = np.zeros((lats.size+4,lons.size+4))
+            slpext[2:-2,2:-2] = slp[iyr[ntrk-1,n],it[ntrk-1,n],:,:]
+
+
+            slpext[:,:2] = slpext[:,-4:-2]
+            slpext[:,-2:] = slpext[:,2:4]
+
+
+            lon180 = np.where(lons==180)[0]
+
+            slpext[1,2:lon180+2] = [slpext[3,ii] for ii in range(lon180+2,lons.size+2)]
+            slpext[0,2:lon180+2] = [slpext[4,ii] for ii in range(lon180+2,lons.size+2)]
+
+            slpext[1,lon180+2:-2] = [slpext[3,ii] for ii in range(2,lon180+2)]
+            slpext[0,lon180+2:-2] = [slpext[4,ii] for ii in range(2,lon180+2)]
+
+            slpext[:2,:2] = slpext[:2,-4:-2]
+            slpext[:2,-2:] = slpext[:2,2:4]
+
+            # check if cyclone center is a loc min
+
+            # slp16 = slp[iyr[ntrk-1,n],it[ntrk-1,n],iplat-2:iplat+3,plon_g-2:plon_g+3]
+
+            #fix iplat and iplon for the extended slp matrix
+            iplatext = iplat+2
+            iplonext = iplon+2
+            slp16 = slpext[iplatext-2:iplatext+3,iplonext-2:iplonext+3]
+
+            print slp16
+
+            locmin = local_minima(slp16)
+            print locmin
+
+            #check if the central point is a loc min
+            if locmin[2,2]:
+                print 'good to go - the center is in the right place'
+            # check if one of the 8 surrounding points is a loc min
+            else:
+                nmin = np.count_nonzero(locmin[1:4,1:4])
+                if nmin == 1 :
+                    locmin2 = np.where(locmin[1:4,1:4])
+                    iplonext = iplonext-1+locmin2[1][0]
+                    iplatext = iplatext-1+locmin2[0][0]
+                #if there are 2 loc mins within the surrounding 8 points take the slp min
+                elif nmin == 2 :
+                    locmin2 = np.where(locmin[1:4,1:4])
+                    iplonext1 = iplonext-1+locmin2[1][0]
+                    iplatext1 = iplatext-1+locmin2[0][0]
+                    iplonext2 = iplonext-1+locmin2[1][1]
+                    iplatext2 = iplatext-1+locmin2[0][1]
+                    # if slp[iyr[ntrk-1,n],it[ntrk-1,n],iplat,iplon]>slp[iyr[ntrk-1,n],it[ntrk-1,n],iplat1,iplon1] :
+                    if slpext[iplatext2,iplonext2]>slpext[iplatext1,iplonext1] :
+                        iplonext = iplonext1
+                        iplatext = iplatext1
+                    else:
+                        iplonext = iplonext2
+                        iplatext = iplatext2
+                else :
+                    print '!!!! ERROR: No loc min around the cyclone center, nmin =', nmin, "time step =",n,"/",nit
+                    miss   = -99.9
+                    cglon  = miss
+                    cglat  = miss
+                    cgslp  = miss
+                    fslp   = miss
+                    effrad = miss
+                    fout.write(" {:>14}{:8.3f}{:>7} {:7.3f}{:>7} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format
+                              ("cglon=",lons[iplon],"cglat=",lats[iplat],"cgslp=",cgslp,"fslp=",fslp,"effrad=",effrad))
+                    fout.write(" {:>14}{:7.3f}\n".format("effrad=",effrad))
+                    continue
+
+            iplon = iplonext - 2
+            iplat = iplatext - 2
+
+            if iplon >= lons.size :
+                iplon = iplon - lons.size
+            if iplon < 0 :
+                iplon = iplon + lons.size
+
+            if iplat < 0 :
+                iplat = -iplat
+                iplon = iplon + 180
+                if iplon >= lons.size:
+                     iplon = iplon - lons.size
+            if iplat >= lats.size :
+                iplat = 2*lats.size-iplat
+                iplon = iplon + 180
+                if iplon >= lons.size:
+                     iplon = iplon - lons.size
+
+            print "initial cyc center slp= ", slp[iyr[ntrk-1,n],it[ntrk-1,n],iplat0,iplon0]
+            print "grid    cyc center slp= ", slp[iyr[ntrk-1,n],it[ntrk-1,n],iplat,iplon]
+            print "grid plat =",iplat,"final plon=",iplon
+
+
+            if np.abs(iplat-iplat0)>1 or np.abs(iplon-iplon0)>1:
+                print "!!!! ERROR: check cyclone center location"
+                print "Tracking cyclone center (lon,lat) = (",lons(plon),",",lats(plat),")"
+                print "Current cyclone center (lon,lat) = (",lons(iplon),",",lats(iplat),")"
+                quit()
+
+
+            # alternative  approach may be
+            # local_minima_locations = detect_local_minima(slp16)
+            # print slp16[local_minima_locations[0][0],local_minima_locations[1][0]]
+
+            #continue rad estimation using the new center
             #  plon = [162]
             #  plat = [33]
             # nplat0 = plat[0]
@@ -386,7 +537,12 @@ for yr in range(2005,2006):
                  gridlat = np.copy(latrange)
                  gridlon = np.zeros_like(gridlat)+ilon
 
-                 nlat[:,i], nlon[:,i] = rotated_grid_transform(plat[0],plon[0],gridlat,gridlon,2)
+                #  nlat[:,i], nlon[:,i] = rotated_grid_transform(plat[0],plon[0],gridlat,gridlon,2)
+                 nlat[:,i], nlon[:,i] = rotated_grid_transform(lats[iplat],lons[iplon],gridlat,gridlon,2)
+
+                 for j in range(lon[:,i].size):
+                     if nlon[j,i] < 0:
+                         nlon[j,i] = nlon[j,i]+360.
 
                  slpint = interpolate.interp2d(lons, lats, slp[iyr[ntrk-1,n],it[ntrk-1,n],:,:], kind='cubic')
 
@@ -412,12 +568,11 @@ for yr in range(2005,2006):
 
             # find the last closed isobar (fslp)
             fslp = np.amin(lslp)
-            slp0 = slpint(nlon[0,0],nlat[0,0])
-            print slp0[0],cslp[ntrk-1,n] 
-            cycdepth = fslp-slp0[0]
+            cgslp = slp[iyr[ntrk-1,n],it[ntrk-1,n],iplat,iplon]
+            cycdepth = fslp-cgslp
 
             # set rad = 0 for weak cyclones
-            if cycdepth >= 1 :
+            if cycdepth >= 0.5 :
                 # find where last closed isobar fslp cross each radius
                 gridlat = np.copy(latrange)
                 for i,ilon in enumerate(lonrange) :
@@ -427,7 +582,10 @@ for yr in range(2005,2006):
 
                      if slp1 <= fslp and slp2 > fslp :
                         rad[i] = j*dlat + (fslp-slp1)/(slp2-slp1)*dlat
-                        flat[i], flon[i] = rotated_grid_transform(plat[0],plon[0],[90-rad[i]],[ilon],2)
+                        # flat[i], flon[i] = rotated_grid_transform(plat[0],plon[0],[90-rad[i]],[ilon],2)
+                        flat[i], flon[i] = rotated_grid_transform(lats[iplat],lons[iplon],[90-rad[i]],[ilon],2)
+                        if flon[i] < 0:
+                            flon[i] = flon[i]+360
                         # print "flat=",flat, "flon=",flon
                         flslp[i] = slpint(flon[0],flat[0])[0]
                         #  fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",flon[0],"lat=",flat[0],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
@@ -436,7 +594,10 @@ for yr in range(2005,2006):
                      if j == latrange.size-1:
                         if slpint(nlon[mr,i],nlat[mr,i])[0] > fslp :
                             rad[i] = mr*dlat
-                            flat[i], flon[i] = rotated_grid_transform(plat[0],plon[0],rad[i],[ilon],2)
+                            # flat[i], flon[i] = rotated_grid_transform(plat[0],plon[0],rad[i],[ilon],2)
+                            flat[i], flon[i] = rotated_grid_transform(lat[iplat],lons[iplon],rad[i],[ilon],2)
+                            if flon[i] < 0:
+                                flon[i] = flon[i]+360
                             flslp[i] = slpint(flon[0],flat[0])[0]
                             #  fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format("angle=",ilon,"lon=",flon[0],"lat=",flat[0],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
                         elif slpint(nlon[j],nlat[j])[0] < fslp :
@@ -465,25 +626,29 @@ for yr in range(2005,2006):
 
             if all(rad) > 0 :
                 effrad = np.sqrt(Area)
-                fout.write(" {:>14}{:7.3f}\n".format("effrad=",effrad))
+                fout.write(" {:>14}{:8.3f}{:>6} {:7.3f}{:>7} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format
+                          ("cglon=",lons[iplon],"cglat=",lats[iplat],"cgslp=",cgslp,"fslp=",fslp,"effrad=",effrad))
 
                 for i,ilon in enumerate(lonrange) :
                     fout.write(" {:>14}{:4.0f}{:>5}{:8.3f}{:>5} {:7.3f}{:>5} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format
-                          ("angle=",ilon,"lon=",flon[i],"lat=",flat[i],"rad=",rad[i],"cslp=",slp0[0],"fslp=",flslp[i]))
+                          ("angle=",ilon,"lon=",flon[i],"lat=",flat[i],"rad=",rad[i],"cslp=",cgslp,"fslp=",flslp[i]))
 
             else:
                 effrad = 0
-                fout.write(" {:>14}{:7.3f}\n".format("effrad=",effrad))
+                fout.write(" {:>14}{:8.3f}{:>7} {:7.3f}{:>7} {:7.3f} {:>5} {:7.3f} {:>5} {:7.3f}\n".format
+                          ("cglon=",lons[iplon],"cglat=",lats[iplat],"cgslp=",cgslp,"fslp=",fslp,"effrad=",effrad))
 
            # cyclones onto the regular grid
 
-            print effrad
+            print "rad = ",rad
+            print "effrad = ", effrad
+
             # if effrad != 0 and iyr[ntrk-1,n]==yr:
             if effrad != 0 :
 
                maxrad = np.amax(rad)+1
 
-               minlat = plat[0]-maxrad
+               minlat = lats[iplat]-maxrad
                if minlat < -90 :
                    minlat = -90.
                    j1 = np.where(lats==-90.)[0]
@@ -505,11 +670,13 @@ for yr in range(2005,2006):
                for j in jrange:
                     for i,ilon in enumerate(lons):
 
-                        gdist = dist(plat[0],plon[0],lats[j],ilon)
+                        # gdist = dist(plat[0],plon[0],lats[j],ilon)
+                        gdist = dist(lats[iplat],lons[iplon],lats[j],ilon)
                         gdist = gdist/deg
 
                         if gdist <= maxrad:
-                            glat, glon = rotated_grid_transform(plat[0],plon[0],[lats[j]],[ilon],1)
+                            # glat, glon = rotated_grid_transform(plat[0],plon[0],[lats[j]],[ilon],1)
+                            glat, glon = rotated_grid_transform(lats[iplat],lons[iplon],[lats[j]],[ilon],1)
 
                             if glon[0] < 0 :
                                 glon[0] = glon[0] + 360
@@ -521,12 +688,15 @@ for yr in range(2005,2006):
 
                             # print "to grid:",it[ntrk-1,n],plat[0],plon[0],effrad
 
-            else:
-                j = find_nearest(lats,plat[0])
-                i = find_nearest(lons,plon[0])
+            #else:
+                # j = find_nearest(lats,plat[0])
+                # i = find_nearest(lons,plon[0])
 
-                gridcyc[it[ntrk-1,n],j,i] = 2
+                # gridcyc[it[ntrk-1,n],j,i] = 2
 
+                # gridcyc[it[ntrk-1,n],iplat,iplon] = 2
+
+            gridcyc[it[ntrk-1,n],iplat,iplon] = 2
 
 
             # end radius estimation
