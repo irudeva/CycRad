@@ -7,6 +7,8 @@ import datetime as datetime  # Python standard library datetime  module
 import time as ftime
 import scipy.ndimage.filters as filters
 import scipy.ndimage.morphology as morphology
+import scipy.ndimage as sp
+
 
 
 def polerot(plat,plon,ilat,ilon):
@@ -285,6 +287,9 @@ for yr in range(2005,2006):
      mslp = nc.variables[varnam[3]][:]/100.
      #mslp0=mslp/100.
 
+     #smoothing
+     mslp = sp.filters.gaussian_filter(mslp, sigma = 2, order = 0)
+
      # fix for leap years !!!
      if iy == 0:
          slp=np.tile(mslp,(3,1,1,1))
@@ -492,14 +497,15 @@ for yr in range(2005,2006):
 
             print "initial cyc center slp= ", slp[iyr[ntrk-1,n],it[ntrk-1,n],iplat0,iplon0]
             print "grid    cyc center slp= ", slp[iyr[ntrk-1,n],it[ntrk-1,n],iplat,iplon]
-            print "grid plat =",iplat,"final plon=",iplon
+            print "initial iplat =",iplat0,"final iplon=",iplon0
+            print "grid iplat =",iplat,"final plon=",iplon
 
 
-            if np.abs(iplat-iplat0)>1 or np.abs(iplon-iplon0)>1:
-                print "!!!! ERROR: check cyclone center location"
-                print "Tracking cyclone center (lon,lat) = (",lons(plon),",",lats(plat),")"
-                print "Current cyclone center (lon,lat) = (",lons(iplon),",",lats(iplat),")"
-                quit()
+            # if np.abs(iplat-iplat0)>1 or (np.abs(iplon-iplon0)>1 and np.abs(iplat-iplat0)<359):
+            #     print "!!!! ERROR: check cyclone center location"
+            #     print "Tracking cyclone center (lon,lat) = (",plon,",",plat,")"
+            #     print "Current cyclone center (lon,lat) = (",lons[iplon],",",lats[iplat],")"
+            #     quit()
 
 
             # alternative  approach may be
@@ -513,10 +519,13 @@ for yr in range(2005,2006):
             # nplon0 = plon[0]
 
             # grid around cyclone center
-            dlon = 10
-            dlat = 0.5
+            # dlon = 10
+            # dlat = 0.5
+            dlon = 20
+            dlat = 1.
             lonrange = np.arange(0., 360., dlon)
-            latrange = np.arange(90., 64.5, -dlat)
+            # latrange = np.arange(90., 64.5, -dlat)
+            latrange = np.arange(90., 64., -dlat)
 
             rslp     = np.zeros_like(latrange)
             dslp     = np.zeros_like(latrange[:-1])
@@ -540,7 +549,7 @@ for yr in range(2005,2006):
                 #  nlat[:,i], nlon[:,i] = rotated_grid_transform(plat[0],plon[0],gridlat,gridlon,2)
                  nlat[:,i], nlon[:,i] = rotated_grid_transform(lats[iplat],lons[iplon],gridlat,gridlon,2)
 
-                 for j in range(lon[:,i].size):
+                 for j in range(nlon[:,i].size):
                      if nlon[j,i] < 0:
                          nlon[j,i] = nlon[j,i]+360.
 

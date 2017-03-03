@@ -5,7 +5,7 @@ begin
 yr = 2005
 t = 1282
   slpyr = yr-1
-  a = addfile("/Users/irudeva/work/DATA/ERAint/erain.mslp."+slpyr+".nc","r")
+  a = addfile("/Users/Irina/work/DATA/ERAint/erain.mslp."+slpyr+".nc","r")
   slp = short2flt(a->msl(t,:,:))
   slp1 =0.01*slp
   copy_VarMeta(slp, slp1)
